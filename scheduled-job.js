@@ -1,11 +1,7 @@
-require('dotenv').config()
-const express = require('express')
-const app = express()
-const port = 3000
 const { google }  = require('googleapis');
+require("dotenv").config();
 
-
-app.get('/', async (req, res) => {
+async function postNewQuestion () {
     /* Setup */
     const auth = await google.auth.getClient({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
     const sheets = google.sheets({ version: 'v4', auth });
@@ -24,6 +20,7 @@ app.get('/', async (req, res) => {
     /* Hent ikke-publisert spørsmål */
     const rowToPublishIndex = allRows.findIndex(x => x[2] !== "ja");
     const updatedRow = [...allRows[rowToPublishIndex], "ja"]
+    const [timestamp, question, isPublished] = updatedRow;
 
     /* Oppdater ikke-publisert spørsmål */
     const skipTitleAndOneIndex = 2;
@@ -46,9 +43,9 @@ app.get('/', async (req, res) => {
 
     await sheets.spreadsheets.values.update(updateRequest);
 
-    res.send({question: updatedRow[1]})
-})
+    return question;
+}
 
-app.listen(port, () => {
-  console.log(`App listening on port ${port}`)
-})
+(async () => {
+    await postNewQuestion()
+})();
