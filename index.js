@@ -1,54 +1,47 @@
-require('dotenv').config()
-const express = require('express')
-const app = express()
-const port = 3000
-const { google }  = require('googleapis');
+require("dotenv").config();
+const { App, ExpressReceiver } = require("@slack/bolt");
+const { publishQuestion } = require("./utils");
+const PORT = process.env.PORT || 3000;
 
+// Receiver gir adgang til den underliggende express-appen i bolt
+const receiver = new ExpressReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
+});
+const { router } = receiver;
 
-app.get('/', async (req, res) => {
-    /* Setup */
-    const auth = await google.auth.getClient({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
-    const sheets = google.sheets({ version: 'v4', auth });
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  receiver,
+});
 
-    /* Hent alle rader */
-    // Kolonner: A: Tidsstempel | B: Spørsmål | C: Er publisert
-    const allRowsExcludingTitle = "Skjemasvar 1!A2:C"
+(async () => {
+  await app.start(PORT);
+  console.log(`Bolt-app kjører på port ${PORT}`);
+})();
 
-    const request = {
-        spreadsheetId: process.env.SHEET_ID,
-        range: allRowsExcludingTitle,
-    }
+// Brukes for å verifisere URL i Slackapps for første gang
+router.post("/slack/events", (req, res) => {
+  if (req?.body?.challenge) res.send({ challenge });
+});
 
-    const allRows = (await sheets.spreadsheets.values.get(request)).data.values;
+// Poster ikke-publisert spørsmål i slack-kanal
+router.get("/publish", async (req, res) => {
+  if (process.env.PUBLISH_SECRET !== req?.query?.secret) {
+    res.send({ error: "Feil kode" });
+  }
+  // Hent channelId ved å gå i kanal via browser, e.g. <slacknavn>.slack.com/<teamId>/<channelId>
+  const testingChannelId = "C03AHS06XAR";
+  try {
+    const question = await publishQuestion();
+    const result = await app.client.chat.postMessage({
+      channel: testingChannelId,
+      text: question,
+    });
 
-    /* Hent ikke-publisert spørsmål */
-    const rowToPublishIndex = allRows.findIndex(x => x[2] !== "ja");
-    const updatedRow = [...allRows[rowToPublishIndex], "ja"]
-
-    /* Oppdater ikke-publisert spørsmål */
-    const skipTitleAndOneIndex = 2;
-    const rowToPublishSheetIndex = skipTitleAndOneIndex + rowToPublishIndex;
-    const updateRange = `Skjemasvar 1!A${rowToPublishSheetIndex}:C${rowToPublishSheetIndex}`
-    const updateRequest = {
-        spreadsheetId: process.env.SHEET_ID,
-        range: updateRange,
-        valueInputOption: "USER_ENTERED",
-        resource: {
-            // Kan sende inn en liste av rader
-            values: [
-                // Hver rad har en liste av kolonner
-                [
-                    ...updatedRow,
-                ]
-            ]
-        }
-    }
-
-    await sheets.spreadsheets.values.update(updateRequest);
-
-    res.send({question: updatedRow[1]})
-})
-
-app.listen(port, () => {
-  console.log(`App listening on port ${port}`)
-})
+    console.log(result);
+    res.send({ message: result.message.text });
+  } catch (error) {
+    console.error(error);
+    res.send({ error });
+  }
+});
