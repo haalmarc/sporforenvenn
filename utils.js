@@ -1,4 +1,5 @@
 const { google } = require("googleapis");
+const sheetName = "Skjemasvar 1";
 
 /*
   Henter ut ikke-publisert spørsmål fra Excel spreadsheet
@@ -13,7 +14,6 @@ async function publishQuestion() {
 
   /* Hent alle rader */
   // Kolonner: A: Tidsstempel | B: Spørsmål | C: Er publisert
-  const sheetName = "Skjemasvar 1";
   const allRowsExcludingTitle = `${sheetName}!A2:C`;
 
   const request = {
@@ -40,16 +40,41 @@ async function publishQuestion() {
       // Kan sende inn en liste av rader
       values: [
         // Hver rad har en liste av kolonner
-        [...updatedRow],
+        updatedRow,
       ],
     },
   };
 
   await sheets.spreadsheets.values.update(updateRequest);
 
-  console.log("Publiserte spørsmålet: ", question);
+  return question;
+}
+
+/*
+  Lagre ny rad i spreadsheet
+*/
+async function submitQuestion(question) {
+  const auth = await google.auth.getClient({
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+
+  // Kolonner: A: Tidsstempel | B: Spørsmål | C: Er publisert
+  const newRow = [new Date(), question];
+
+  const appendRequest = {
+    spreadsheetId: process.env.SHEET_ID,
+    range: `${sheetName}!A:B`,
+    valueInputOption: "USER_ENTERED",
+    resource: {
+      values: [newRow],
+    },
+  };
+
+  await sheets.spreadsheets.values.append(appendRequest);
 
   return question;
 }
 
 module.exports.publishQuestion = publishQuestion;
+module.exports.submitQuestion = submitQuestion;
