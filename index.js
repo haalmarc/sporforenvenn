@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { App, ExpressReceiver } = require("@slack/bolt");
-const { publishQuestion, submitQuestion } = require("./utils");
+const { getQuestionAndMarkAsPublished, submitQuestion } = require("./utils");
 const PORT = process.env.PORT || 3000;
 
 // Receiver gir adgang til den underliggende express-appen i bolt
@@ -32,7 +32,7 @@ router.get("/publish", async (req, res) => {
   // Hent channelId ved å gå i kanal via browser, e.g. <slacknavn>.slack.com/<teamId>/<channelId>
   const testingChannelId = "C03AHS06XAR";
   try {
-    const question = await publishQuestion();
+    const question = await getQuestionAndMarkAsPublished();
     const result = await app.client.chat.postMessage({
       channel: testingChannelId,
       text: question,

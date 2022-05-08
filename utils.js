@@ -5,7 +5,7 @@ const sheetName = "Skjemasvar 1";
   Henter ut ikke-publisert spørsmål fra Excel spreadsheet
   og markerer tilhørende rad med spørsmålet som publisert
 */
-async function publishQuestion() {
+async function getQuestionAndMarkAsPublished() {
   /* Setup */
   const auth = await google.auth.getClient({
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -76,5 +76,5 @@ async function submitQuestion(question) {
   return question;
 }
 
-module.exports.publishQuestion = publishQuestion;
+module.exports.getQuestionAndMarkAsPublished = getQuestionAndMarkAsPublished;
 module.exports.submitQuestion = submitQuestion;
