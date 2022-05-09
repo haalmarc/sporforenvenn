@@ -24,6 +24,26 @@ router.post("/slack/events", (req, res) => {
   if (req?.body?.challenge) res.send({ challenge });
 });
 
+// Sender inn teksten etter kommando
+app.command("/sendinn", async ({ ack, command, client, body }) => {
+  await ack();
+
+  const user = body.user.id;
+  const question = command.text;
+
+  await submitQuestion(question);
+
+  // Send melding til bruker
+  try {
+    await client.chat.postMessage({
+      channel: user,
+      text: "Takk for innsendt spørsmål!",
+    });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
 // Poster ikke-publisert spørsmål i slack-kanal
 router.get("/publish", async (req, res) => {
   if (process.env.PUBLISH_SECRET !== req?.query?.secret) {
@@ -46,7 +66,7 @@ router.get("/publish", async (req, res) => {
 });
 
 // Lytt til slash-kommando
-app.command("/sendinn", async ({ ack, body, client }) => {
+app.command("/sendinnmodal", async ({ ack, body, client }) => {
   await ack();
 
   try {
@@ -79,6 +99,12 @@ app.command("/sendinn", async ({ ack, body, client }) => {
               type: "plain_text_input",
               action_id: "question_input",
               multiline: true,
+              placeholder: {
+                type: "plain_text",
+                text: "Skriv ditt spørsmål ...",
+              },
+              min_length: 5,
+              focus_on_load: true,
             },
           },
         ],
@@ -102,23 +128,16 @@ app.view("send_inn_modal", async ({ ack, body, view, client }) => {
   await ack();
 
   // Blokk med block_id `input_question` og inputfelt med action_id `question_input`
-  const val = view["state"]["values"]["question"]["question_input"].value;
-  const user = body["user"]["id"];
+  const val = view.state.values.question.question_input.value;
+  const user = body.user.id;
 
-  const results = await submitQuestion(val);
-
-  let msg = "";
-  if (results) {
-    msg = "Takk for innsendt spørsmål!";
-  } else {
-    msg = "Det skjedde en feil ved innsending av spørsmål.";
-  }
+  await submitQuestion(val);
 
   // Send melding til bruker
   try {
     await client.chat.postMessage({
       channel: user,
-      text: msg,
+      text: "Takk for innsendt spørsmål!",
     });
   } catch (error) {
     console.error(error);
