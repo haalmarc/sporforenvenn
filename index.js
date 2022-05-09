@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3000;
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
-const { router } = receiver;
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -20,23 +19,23 @@ const app = new App({
 })();
 
 // Brukes for å verifisere URL i Slackapps for første gang
-router.post("/slack/events", (req, res) => {
+receiver.router.post("/slack/events", (req, res) => {
   if (req?.body?.challenge) res.send({ challenge });
 });
 
 // Sender inn teksten etter kommando
-app.command("/sendinn", async ({ ack, command, client, body }) => {
+app.command("/sendinn", async ({ ack, command }) => {
   await ack();
 
-  const user = body.user.id;
-  const question = command.text;
-
-  await submitQuestion(question);
+  const { text, user_id } = command;
+  await submitQuestion(text);
 
   // Send melding til bruker
   try {
-    await client.chat.postMessage({
-      channel: user,
+    await app.client.chat.postMessage({
+      token: process.env.SLACK_BOT_TOKEN,
+      signingSecret: process.env.SLACK_SIGNING_SECRET,
+      channel: user_id,
       text: "Takk for innsendt spørsmål!",
     });
   } catch (error) {
@@ -45,7 +44,7 @@ app.command("/sendinn", async ({ ack, command, client, body }) => {
 });
 
 // Poster ikke-publisert spørsmål i slack-kanal
-router.get("/publish", async (req, res) => {
+receiver.router.get("/publish", async (req, res) => {
   if (process.env.PUBLISH_SECRET !== req?.query?.secret) {
     res.send({ error: "Feil kode" });
   }
@@ -66,7 +65,7 @@ router.get("/publish", async (req, res) => {
 });
 
 // Lytt til slash-kommando
-app.command("/sendinnmodal", async ({ ack, body, client }) => {
+app.command("/modal", async ({ ack, body, client }) => {
   await ack();
 
   try {
@@ -127,16 +126,16 @@ app.command("/sendinnmodal", async ({ ack, body, client }) => {
 app.view("send_inn_modal", async ({ ack, body, view, client }) => {
   await ack();
 
-  // Blokk med block_id `input_question` og inputfelt med action_id `question_input`
-  const val = view.state.values.question.question_input.value;
-  const user = body.user.id;
+  // Blokk med block_id `question` og inputfelt med action_id `question_input`
+  const { value } = view.state.values.question.question_input;
+  const { user_id } = body;
 
-  await submitQuestion(val);
+  await submitQuestion(value);
 
   // Send melding til bruker
   try {
     await client.chat.postMessage({
-      channel: user,
+      channel: user_id,
       text: "Takk for innsendt spørsmål!",
     });
   } catch (error) {
