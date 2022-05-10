@@ -128,14 +128,14 @@ app.view("send_inn_modal", async ({ ack, body, view, client }) => {
 
   // Blokk med block_id `question` og inputfelt med action_id `question_input`
   const { value } = view.state.values.question.question_input;
-  const { user_id } = body;
+  const { id } = body.user;
 
   await submitQuestion(value);
 
   // Send melding til bruker
   try {
     await client.chat.postMessage({
-      channel: user_id,
+      channel: id,
       text: "Takk for innsendt spørsmål!",
     });
   } catch (error) {
