@@ -17,7 +17,7 @@ async function getQuestionAndMarkAsPublished() {
   const allRowsExcludingTitle = `${sheetName}!A2:C`;
 
   const request = {
-    spreadsheetId: process.env.SHEET_ID,
+    spreadsheetId: process.env.SPREADSHEET_ID,
     range: allRowsExcludingTitle,
   };
 
@@ -33,7 +33,7 @@ async function getQuestionAndMarkAsPublished() {
   const rowToPublishSheetIndex = skipTitleAndOneIndex + rowToPublishIndex;
   const updateRange = `${sheetName}!A${rowToPublishSheetIndex}:C${rowToPublishSheetIndex}`;
   const updateRequest = {
-    spreadsheetId: process.env.SHEET_ID,
+    spreadsheetId: process.env.SPREADSHEET_ID,
     range: updateRange,
     valueInputOption: "USER_ENTERED",
     resource: {
@@ -63,7 +63,7 @@ async function submitQuestion(question) {
   const newRow = [new Date(), question];
 
   const appendRequest = {
-    spreadsheetId: process.env.SHEET_ID,
+    spreadsheetId: process.env.SPREADSHEET_ID,
     range: `${sheetName}!A:B`,
     valueInputOption: "USER_ENTERED",
     resource: {
